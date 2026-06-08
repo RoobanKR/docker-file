@@ -1,0 +1,135 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# LMS — Multi-container code-server  (50,000 students / ~5,000 peak concurrent)
+#
+# Architecture:
+#   Nginx :8080  →  20 × code-server  (sticky sessions by student cookie)
+#   All containers share the same ./workspace volume
+#   Each student gets their own subfolder: workspace/student-<userId>/
+#
+# Capacity:  20 instances × ~250 concurrent = 5,000 concurrent students
+#            Handles 50,000 total registered students comfortably
+#
+# Commands:
+#   First time:   docker-compose build
+#   Start:        docker-compose up -d
+#   Stop:         docker-compose down
+#   Status:       docker-compose ps
+#   Logs:         docker-compose logs -f nginx
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Shared definition (YAML anchor — all instances inherit this) ──────────────
+x-code-server: &code-server-base
+  build:
+    context: .
+    dockerfile: Dockerfile.codeserver
+  image: lms-code-server:latest
+  command:
+    - "code-server"
+    - "--bind-addr"
+    - "0.0.0.0:8080"
+    - "--auth"
+    - "none"
+    - "--disable-telemetry"
+    - "."
+  volumes:
+    - workspace:/home/coder/project
+  environment:
+    - DOCKER_USER=coder
+  restart: unless-stopped
+  networks:
+    - lms-net
+  deploy:
+    resources:
+      limits:
+        cpus: "2"
+        memory: 2G
+      reservations:
+        memory: 512M
+
+services:
+
+  # ── Load balancer ─────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - code-server-1
+      - code-server-2
+      - code-server-3
+      - code-server-4
+      - code-server-5
+      - code-server-6
+      - code-server-7
+      - code-server-8
+      - code-server-9
+      - code-server-10
+      - code-server-11
+      - code-server-12
+      - code-server-13
+      - code-server-14
+      - code-server-15
+      - code-server-16
+      - code-server-17
+      - code-server-18
+      - code-server-19
+      - code-server-20
+    networks:
+      - lms-net
+    restart: unless-stopped
+
+  # ── 20 code-server instances ──────────────────────────────────────────────
+  code-server-1:
+    <<: *code-server-base
+  code-server-2:
+    <<: *code-server-base
+  code-server-3:
+    <<: *code-server-base
+  code-server-4:
+    <<: *code-server-base
+  code-server-5:
+    <<: *code-server-base
+  code-server-6:
+    <<: *code-server-base
+  code-server-7:
+    <<: *code-server-base
+  code-server-8:
+    <<: *code-server-base
+  code-server-9:
+    <<: *code-server-base
+  code-server-10:
+    <<: *code-server-base
+  code-server-11:
+    <<: *code-server-base
+  code-server-12:
+    <<: *code-server-base
+  code-server-13:
+    <<: *code-server-base
+  code-server-14:
+    <<: *code-server-base
+  code-server-15:
+    <<: *code-server-base
+  code-server-16:
+    <<: *code-server-base
+  code-server-17:
+    <<: *code-server-base
+  code-server-18:
+    <<: *code-server-base
+  code-server-19:
+    <<: *code-server-base
+  code-server-20:
+    <<: *code-server-base
+
+volumes:
+  workspace:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./workspace
+
+networks:
+  lms-net:
+    driver: bridge

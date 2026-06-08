@@ -1,0 +1,54 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# LMS code-server image
+# All 7 language runtimes baked in: Python, Node/TS, Java, C/C++, Go
+# Build once → used by every code-server instance in docker-compose.yml
+# ─────────────────────────────────────────────────────────────────────────────
+FROM codercom/code-server:latest
+
+USER root
+
+# ── System deps ───────────────────────────────────────────────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl wget ca-certificates gnupg \
+    python3 python3-pip python3-venv \
+    openjdk-21-jdk \
+    gcc g++ build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Node.js 20 LTS ────────────────────────────────────────────────────────────
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── TypeScript + ts-node ──────────────────────────────────────────────────────
+RUN npm install -g typescript ts-node @types/node
+
+# ── Go 1.22 ───────────────────────────────────────────────────────────────────
+RUN curl -OL https://go.dev/dl/go1.22.5.linux-amd64.tar.gz \
+    && tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz \
+    && rm go1.22.5.linux-amd64.tar.gz
+
+ENV PATH=$PATH:/usr/local/go/bin
+
+# ── Delve (Go debugger) ───────────────────────────────────────────────────────
+RUN GOPATH=/tmp/gotools /usr/local/go/bin/go install github.com/go-delve/delve/cmd/dlv@latest \
+    && mv /tmp/gotools/bin/dlv /usr/local/bin/dlv \
+    && rm -rf /tmp/gotools
+
+# ── Workspace dir owned by coder ─────────────────────────────────────────────
+RUN mkdir -p /home/coder/project && chown -R coder:coder /home/coder/project
+
+# ── Switch to coder user for extension installation ───────────────────────────
+USER coder
+
+# ── User settings — disable Workspace Trust (otherwise file creation is blocked
+#    in "Restricted Mode") + skip the welcome tab. ──────────────────────────────
+RUN mkdir -p /home/coder/.local/share/code-server/User \
+    && printf '{\n  "security.workspace.trust.enabled": false,\n  "workbench.startupEditor": "none",\n  "telemetry.telemetryLevel": "off"\n}\n' \
+       > /home/coder/.local/share/code-server/User/settings.json
+
+# Install VS Code extensions (Open VSX — failures are non-fatal)
+RUN code-server --install-extension golang.go          2>/dev/null || true
+RUN code-server --install-extension vadimcn.vscode-lldb 2>/dev/null || true
+RUN code-server --install-extension redhat.java         2>/dev/null || true
+RUN code-server --install-extension vscjava.vscode-java-debug 2>/dev/null || true

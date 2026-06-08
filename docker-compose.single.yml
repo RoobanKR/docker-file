@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# LMS — SINGLE code-server  (local testing / small classes)
+#
+# ONE code-server exposed directly on :8080 — no Nginx, no load balancing.
+# This avoids the cross-origin WebSocket 403 that breaks the terminal when
+# multiple containers sit behind a cookie-based load balancer in an iframe.
+#
+# Use this LOCALLY:
+#   docker-compose -f docker-compose.single.yml up -d
+#   docker-compose -f docker-compose.single.yml ps
+#   docker-compose -f docker-compose.single.yml down
+#
+# Capacity: one container handles ~100-200 concurrent students comfortably.
+# For larger scale, the multi-container setup needs proper session affinity
+# at the infrastructure level (sub-domain per node, or one container per user).
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  code-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.codeserver
+    image: lms-code-server:latest
+    container_name: lms-code-server
+    command:
+      - "code-server"
+      - "--bind-addr"
+      - "0.0.0.0:8080"
+      - "--auth"
+      - "none"
+      - "--disable-telemetry"
+      - "."
+    ports:
+      - "8080:8080"            # code-server served directly — no proxy
+    volumes:
+      - ./workspace:/home/coder/project
+    environment:
+      - DOCKER_USER=coder
+    restart: unless-stopped

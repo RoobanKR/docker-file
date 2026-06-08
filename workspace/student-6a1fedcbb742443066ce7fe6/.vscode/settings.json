@@ -1,0 +1,7 @@
+{
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 700,
+  "files.exclude": {
+    "_review": true
+  }
+}
