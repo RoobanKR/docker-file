@@ -52,3 +52,4 @@ RUN code-server --install-extension golang.go          2>/dev/null || true
 RUN code-server --install-extension vadimcn.vscode-lldb 2>/dev/null || true
 RUN code-server --install-extension redhat.java         2>/dev/null || true
 RUN code-server --install-extension vscjava.vscode-java-debug 2>/dev/null || true
+CMD ["code-server", "--bind-addr", "0.0.0.0:8080", "--auth", "none", "--disable-telemetry", "/home/coder/project"]
