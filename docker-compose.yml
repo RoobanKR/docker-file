@@ -35,7 +35,7 @@ x-code-server: &code-server-base
     - workspace:/home/coder/project
   environment:
     - DOCKER_USER=coder
-    - AUTH=none
+    - PASSWORD=yourpassword123
   restart: unless-stopped
   networks:
     - lms-net

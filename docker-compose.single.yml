@@ -36,5 +36,5 @@ services:
       - ./workspace:/home/coder/project
     environment:
       - DOCKER_USER=coder
-      - AUTH=none
+      - PASSWORD=yourpassword123
     restart: unless-stopped
