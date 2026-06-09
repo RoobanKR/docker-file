@@ -1,20 +1,7 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# LMS code-server image
-# All 7 language runtimes baked in: Python, Node/TS, Java, C/C++, Go
-# Build once → used by every code-server instance in docker-compose.yml
-# ─────────────────────────────────────────────────────────────────────────────
 FROM codercom/code-server:latest
 
 USER root
-# ── Entrypoint script — fixes permissions at runtime ─────────────────────────
-USER root
-RUN printf '#!/bin/sh\nmkdir -p /home/coder/project\nchown -R coder:coder /home/coder/project\nchmod -R 777 /home/coder/project\nexec su-exec coder code-server --bind-addr 0.0.0.0:8080 --auth none --disable-telemetry /home/coder/project\n' \
-    > /entrypoint.sh && chmod +x /entrypoint.sh
 
-RUN apt-get update && apt-get install -y --no-install-recommends su-exec && rm -rf /var/lib/apt/lists/*
-
-ENTRYPOINT ["/entrypoint.sh"]
-CMD []
 # ── System deps ───────────────────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl wget ca-certificates gnupg \
@@ -43,21 +30,24 @@ RUN GOPATH=/tmp/gotools /usr/local/go/bin/go install github.com/go-delve/delve/c
     && mv /tmp/gotools/bin/dlv /usr/local/bin/dlv \
     && rm -rf /tmp/gotools
 
-# ── Workspace dir owned by coder ─────────────────────────────────────────────
-RUN mkdir -p /home/coder/project && chown -R coder:coder /home/coder/project
+# ── Workspace dir ─────────────────────────────────────────────────────────────
+RUN mkdir -p /home/coder/project && chmod -R 777 /home/coder/project
 
-# ── Switch to coder user for extension installation ───────────────────────────
+# ── VS Code user settings ─────────────────────────────────────────────────────
 USER coder
-
-# ── User settings — disable Workspace Trust (otherwise file creation is blocked
-#    in "Restricted Mode") + skip the welcome tab. ──────────────────────────────
 RUN mkdir -p /home/coder/.local/share/code-server/User \
     && printf '{\n  "security.workspace.trust.enabled": false,\n  "workbench.startupEditor": "none",\n  "telemetry.telemetryLevel": "off"\n}\n' \
        > /home/coder/.local/share/code-server/User/settings.json
 
-# Install VS Code extensions (Open VSX — failures are non-fatal)
+# ── Extensions ────────────────────────────────────────────────────────────────
 RUN code-server --install-extension golang.go          2>/dev/null || true
 RUN code-server --install-extension vadimcn.vscode-lldb 2>/dev/null || true
 RUN code-server --install-extension redhat.java         2>/dev/null || true
 RUN code-server --install-extension vscjava.vscode-java-debug 2>/dev/null || true
-CMD ["code-server", "--bind-addr", "0.0.0.0:8080", "--auth", "none", "--disable-telemetry", "/home/coder/project"]
+
+# ── Entrypoint — fix permissions at runtime then start as coder ───────────────
+USER root
+RUN printf '#!/bin/sh\nchmod -R 777 /home/coder/project\nchown -R coder:coder /home/coder/project\nexec runuser -u coder -- code-server --bind-addr 0.0.0.0:8080 --auth none --disable-telemetry /home/coder/project\n' \
+    > /entrypoint.sh && chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
