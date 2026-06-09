@@ -1,41 +1,11 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# LMS — LOCAL TESTING setup  (low-RAM machines, ~8GB)
-#
-# 3 code-server instances + Nginx — fits comfortably in 7-8GB RAM.
-# Proves load-balancing + sticky sessions work, exactly like production.
-#
-# Use this file LOCALLY:
-#   docker-compose -f docker-compose.local.yml build
-#   docker-compose -f docker-compose.local.yml up -d
-#   docker-compose -f docker-compose.local.yml ps
-#   docker-compose -f docker-compose.local.yml down
-#
-# On your SERVER, use the full docker-compose.yml (20 instances) instead.
-# Same image, same code — only the instance count differs.
-# ─────────────────────────────────────────────────────────────────────────────
-
-x-code-server: &code-server-base
+x-code-server-base: &code-server-base
   build:
     context: .
     dockerfile: Dockerfile.codeserver
   image: lms-code-server:latest
-  command:
-    - "code-server"
-    - "--bind-addr"
-    - "0.0.0.0:8080"
-    - "--auth"
-    - "none"
-    - "--disable-telemetry"
-    - "."
-  volumes:
-    - ./workspace:/home/coder/project
-  environment:
-    - DOCKER_USER=coder
-    - AUTH=none
   restart: unless-stopped
   networks:
     - lms-net
-  # Cap each container so 3 fit in low RAM (3 × 1GB = 3GB)
   deploy:
     resources:
       limits:
@@ -44,7 +14,6 @@ x-code-server: &code-server-base
         memory: 256M
 
 services:
-
   nginx:
     image: nginx:alpine
     ports:
@@ -59,12 +28,22 @@ services:
       - lms-net
     restart: unless-stopped
 
+  # Each code-server instance can handle multiple students
+  # using subdirectories
   code-server-1:
     <<: *code-server-base
+    volumes:
+      - ./workspaces:/home/coder/workspaces
+      
   code-server-2:
     <<: *code-server-base
+    volumes:
+      - ./workspaces:/home/coder/workspaces
+      
   code-server-3:
     <<: *code-server-base
+    volumes:
+      - ./workspaces:/home/coder/workspaces
 
 networks:
   lms-net:
