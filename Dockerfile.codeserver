@@ -6,7 +6,15 @@
 FROM codercom/code-server:latest
 
 USER root
+# ── Entrypoint script — fixes permissions at runtime ─────────────────────────
+USER root
+RUN printf '#!/bin/sh\nmkdir -p /home/coder/project\nchown -R coder:coder /home/coder/project\nchmod -R 777 /home/coder/project\nexec su-exec coder code-server --bind-addr 0.0.0.0:8080 --auth none --disable-telemetry /home/coder/project\n' \
+    > /entrypoint.sh && chmod +x /entrypoint.sh
 
+RUN apt-get update && apt-get install -y --no-install-recommends su-exec && rm -rf /var/lib/apt/lists/*
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD []
 # ── System deps ───────────────────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl wget ca-certificates gnupg \
