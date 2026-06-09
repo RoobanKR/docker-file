@@ -1,0 +1,6 @@
+[build]
+dockerfilePath = "Dockerfile.codeserver"
+
+[deploy]
+startCommand = "code-server --bind-addr 0.0.0.0:8080 /workspace"
+restartPolicyType = "always"
